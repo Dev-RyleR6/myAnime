@@ -1,12 +1,50 @@
-# React + Vite
+# MyAnime
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Welcome to MyAnime!**  
+Your ad-free anime streaming experience.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Description
 
-## Expanding the ESLint configuration
+MyAnime is a clean, ad-free anime app built for **personal entertainment and educational purposes**. It fetches anime data via the **Consumet API**, which provides legally available content. This app is designed to provide a smooth, minimalistic anime-watching experience without ads or popups.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## Features
+
+- Ad-free experience  
+- Clean and minimal interface  
+- Personal watchlist  
+- Watch history  
+- Legal access to anime data through Consumet API  
+
+---
+
+## Why I Built This
+
+I was tired of annoying ads and popups on anime streaming websites, so I created this app for **personal entertainment and learning**.  
+
+---
+
+## Disclaimer
+
+- **Legal Notice:** All content is sourced from legitimate APIs (Consumet). No illegal content or free anime streams are hosted or promoted.  
+- **Personal Use:** This application is built strictly for personal use and educational purposes.  
+
+---
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Dev-RyleR6/myAnime.git
+
+# Navigate to project directory
+cd myAnime
+
+# Install dependencies
+npm install
+
+# Start the app
+npm run dev
