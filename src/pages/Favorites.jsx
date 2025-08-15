@@ -1,76 +1,239 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '../contexts/AuthContext';
+import { useAnimeData } from '../hooks/useAnimeData';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function Favorites() {
+  const navigate = useNavigate();
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const { user, isAuthenticated } = useAuthContext();
+  const { getAnimeInfo } = useAnimeData();
+
+  const handleAnimeClick = (animeId) => {
+    navigate(`/anime/${animeId}`);
+  };
+
+  // Fetch user's favorites on component mount
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!isAuthenticated || !user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Import userDataService dynamically to avoid circular dependencies
+        const { default: userDataService } = await import('../services/userDataService');
+        
+        // Get user's favorites
+        const userFavorites = await userDataService.getFavorites(user.uid);
+        
+        if (userFavorites && userFavorites.length > 0) {
+          // Fetch additional anime info for each favorite
+          const favoritesWithInfo = await Promise.all(
+            userFavorites.map(async (favorite) => {
+              try {
+                const animeInfo = await getAnimeInfo(favorite.animeId);
+                return {
+                  ...favorite,
+                  ...animeInfo,
+                  id: favorite.animeId
+                };
+              } catch (error) {
+                console.error(`Error fetching info for anime ${favorite.animeId}:`, error);
+                return favorite;
+              }
+            })
+          );
+          
+          setFavorites(favoritesWithInfo);
+        } else {
+          setFavorites([]);
+        }
+      } catch (error) {
+        console.error('Error fetching favorites:', error);
+        setError('Failed to load favorites. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavorites();
+  }, [isAuthenticated, user, getAnimeInfo]);
+
+  const handleRemoveFavorite = async (animeId) => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      // Import userDataService dynamically
+      const { default: userDataService } = await import('../services/userDataService');
+      
+      // Remove from favorites
+      await userDataService.removeFromFavorites(user.uid, animeId);
+      
+      // Update local state
+      setFavorites(prev => prev.filter(fav => fav.id !== animeId));
+      
+      console.log('Removed from favorites:', animeId);
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      setError('Failed to remove from favorites. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-4xl mx-auto px-6 py-16">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-cyan-500/25">
-            <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-4">Your Favorites</h1>
+      {/* Header */}
+      <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-white mb-4">❤️ My Favorites</h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Keep track of all the anime you love. Your favorites will appear here once you start adding them.
+            Your personal collection of beloved anime series and movies
           </p>
         </div>
 
-        {/* Empty state */}
-        <div className="bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-700/50 p-12 text-center">
-          <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-12 h-12 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h3 className="text-2xl font-semibold text-white mb-3">No favorites yet</h3>
-          <p className="text-slate-400 mb-8 max-w-md mx-auto">
-            Start exploring anime and add your favorites by clicking the heart icon on any anime card.
-          </p>
-          
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-xl shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              Browse Anime
-            </button>
-            <button className="px-8 py-3 bg-slate-700/50 hover:bg-slate-700/70 text-white font-medium rounded-xl border border-slate-600/50 hover:border-cyan-500/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              Discover New Shows
+        {/* Authentication Check */}
+        {!isAuthenticated ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🔐</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4">Sign In Required</h3>
+            <p className="text-slate-400 mb-8 max-w-md mx-auto">
+              Please sign in to view and manage your favorites
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/25"
+            >
+              Sign In
             </button>
           </div>
-        </div>
+        ) : loading ? (
+          /* Loading state */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, index) => (
+              <SkeletonLoader key={index} />
+            ))}
+          </div>
+        ) : error ? (
+          /* Error state */
+          <div className="text-center py-16">
+            <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4">Error Loading Favorites</h3>
+            <p className="text-slate-400 mb-8 max-w-md mx-auto">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/25"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : favorites.length > 0 ? (
+          /* Favorites Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {favorites.map((anime) => (
+              <div
+                key={anime.id}
+                className="group bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden border border-slate-700/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/10 cursor-pointer"
+              >
+                {/* Image placeholder */}
+                <div 
+                  onClick={() => handleAnimeClick(anime.id)}
+                  className="relative w-full h-48 bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-16 h-16 bg-slate-600/50 rounded-full flex items-center justify-center backdrop-blur-sm">
+                      <span className="text-2xl">🎬</span>
+                    </div>
+                  </div>
+                  
+                  {/* Status badge */}
+                  <div className="absolute top-3 right-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full backdrop-blur-sm ${
+                      (anime.status === 'Ongoing' || anime.releaseStatus === 'RELEASING') 
+                        ? 'bg-green-500/90 text-white' 
+                        : 'bg-blue-500/90 text-white'
+                    }`}>
+                      {anime.status || anime.releaseStatus || 'Unknown'}
+                    </span>
+                  </div>
 
-        {/* Coming soon features */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
-            <div className="w-12 h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h4 className="text-white font-semibold mb-2">Smart Recommendations</h4>
-            <p className="text-slate-400 text-sm">Get personalized anime suggestions based on your favorites.</p>
+                  {/* Favorite heart */}
+                  <div className="absolute top-3 left-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFavorite(anime.id);
+                      }}
+                      className="w-8 h-8 bg-red-500/90 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-red-400 transition-colors duration-200"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Content */}
+                <div 
+                  onClick={() => handleAnimeClick(anime.id)}
+                  className="p-4"
+                >
+                  <h3 className="text-white font-semibold text-lg mb-2 group-hover:text-cyan-400 transition-colors duration-200">
+                    {anime.title?.english || anime.title?.romaji || anime.title || 'Unknown Title'}
+                  </h3>
+                  
+                  {/* Rating and info */}
+                  <div className="flex items-center justify-between text-sm text-slate-400 mb-3">
+                    <div className="flex items-center space-x-1">
+                      <span className="text-yellow-400">⭐</span>
+                      <span>{anime.rating || anime.averageScore || 'N/A'}</span>
+                    </div>
+                    <span>{anime.episodes || anime.totalEpisodes || 'N/A'} eps</span>
+                  </div>
+
+                  {/* Status and type */}
+                  <div className="text-sm text-slate-400 mb-2">
+                    <span className="text-cyan-400">Status:</span> {anime.status || anime.releaseStatus || 'Unknown'}
+                  </div>
+
+                  {/* Added date */}
+                  <div className="text-sm text-slate-400">
+                    <span className="text-cyan-400">Added:</span> {anime.addedAt ? new Date(anime.addedAt).toLocaleDateString() : 'Recently'}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          
-          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" />
-              </svg>
+        ) : (
+          /* Empty state */
+          <div className="text-center py-16">
+            <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">💔</span>
             </div>
-            <h4 className="text-white font-semibold mb-2">Watch History</h4>
-            <p className="text-slate-400 text-sm">Track your progress and resume where you left off.</p>
+            <h3 className="text-2xl font-bold text-white mb-4">No Favorites Yet</h3>
+            <p className="text-slate-400 mb-8 max-w-md mx-auto">
+              Start building your collection by adding anime to your favorites while browsing
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/25"
+            >
+              Discover Anime
+            </button>
           </div>
-          
-          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/30">
-            <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
-              </svg>
-            </div>
-            <h4 className="text-white font-semibold mb-2">Share Lists</h4>
-            <p className="text-slate-400 text-sm">Share your favorite anime with friends and family.</p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

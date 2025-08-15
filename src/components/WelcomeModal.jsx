@@ -113,7 +113,7 @@ export default function WelcomeModal({ isOpen, onClose }) {
               </div>
               <div>
                 <h3 className="text-white font-semibold">Disclaimer</h3>
-                <p className="text-slate-300 text-sm">All content is sourced through legitimate APIs (Consumet). This app respects copyright and only provides access to legally available content.</p>
+                <p className="text-slate-300 text-sm">Anime and movie data provided by external sources. This app respects copyright and only provides access to legally available content.</p>
               </div>
             </div>
           </div>
